@@ -8,6 +8,7 @@
 #   scripts/release.sh v1.5.0        # explicit version
 #   scripts/release.sh minor -m "Duplicate finder"   # custom tag message
 #   scripts/release.sh -n            # dry run: show what would happen
+#   scripts/release.sh -y            # no confirmation prompt (non-interactive use)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -15,6 +16,7 @@ cd "$(dirname "$0")/.."
 bump="patch"
 message=""
 dry_run=0
+assume_yes=0
 remote="origin"
 
 while [[ $# -gt 0 ]]; do
@@ -23,7 +25,8 @@ while [[ $# -gt 0 ]]; do
     v[0-9]*.[0-9]*.[0-9]*) bump="$1" ;;
     -m|--message) message="${2:?missing message}"; shift ;;
     -n|--dry-run) dry_run=1 ;;
-    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -y|--yes) assume_yes=1 ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown argument: $1 (see --help)" >&2; exit 1 ;;
   esac
   shift
@@ -87,8 +90,11 @@ if [[ $dry_run -eq 1 ]]; then
   exit 0
 fi
 
-read -r -p "Create and push $new? [y/N] " answer
-[[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+if [[ $assume_yes -eq 0 ]]; then
+  [[ -t 0 ]] || die "no terminal to ask for confirmation - use -y to skip it"
+  read -r -p "Create and push $new? [y/N] " answer
+  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+fi
 
 # --- tag + push ----------------------------------------------------------------
 git tag -a "$new" -m "$tag_msg"
@@ -98,4 +104,7 @@ git push "$remote" "$new"
 url="$(git remote get-url "$remote" | sed -E 's#^git@github.com:#https://github.com/#; s#\.git$##')"
 echo
 echo "Done: $new pushed."
-[[ "$url" == https://github.com/* ]] && echo "Create a GitHub release from it: $url/releases/new?tag=$new"
+if [[ "$url" == https://github.com/* ]]; then
+  echo "Build (Docker image): $url/actions"
+  echo "Create a GitHub release from it: $url/releases/new?tag=$new"
+fi
