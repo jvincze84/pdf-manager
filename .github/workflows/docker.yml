@@ -1,7 +1,9 @@
-# Build the Docker image (runtime stage) and push it to the registry:
+# Build the Docker image (runtime stage) and push it to the private registry
+# and to Docker Hub:
 #   feature/<name> branch -> :feature-<name>, :feature-<name>-<sha7>
 #   tag v*                -> :<tag>
-# Needs repository secrets REGISTRY_USERNAME and REGISTRY_PASSWORD.
+# Repository secrets: REGISTRY_URL, REGISTRY_USERNAME, REGISTRY_PASSWORD,
+# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
 name: Docker
 
 on:
@@ -15,5 +17,8 @@ jobs:
     with:
       image-name: pdf-manager
     secrets:
+      REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
