@@ -18,6 +18,7 @@ jobs:
     with:
       image-name: pdf-manager
       dockerhub-readme: true   # tag builds: Docker Hub overview <- README.md
+      dockerhub-short-description: "https://github.com/jvincze84/pdf-manager"
     secrets:
       REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
