@@ -3,7 +3,8 @@
 #   feature/<name> branch -> :feature-<name>, :feature-<name>-<sha7>
 #   tag v*                -> :<tag>
 # Repository secrets: REGISTRY_URL, REGISTRY_USERNAME, REGISTRY_PASSWORD,
-# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
+# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Read, Write, Delete scope - needed to
+# update the Docker Hub repository overview from README.md on tag builds).
 name: Docker
 
 on:
@@ -16,6 +17,7 @@ jobs:
     uses: jvincze84/reusable-workflows/.github/workflows/docker-build.yml@main
     with:
       image-name: pdf-manager
+      dockerhub-readme: true   # tag builds: Docker Hub overview <- README.md
     secrets:
       REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
