@@ -1,0 +1,19 @@
+# Build the Docker image (runtime stage) and push it to the registry:
+#   feature/<name> branch -> :feature-<name>, :feature-<name>-<sha7>
+#   tag v*                -> :<tag>
+# Needs repository secrets REGISTRY_USERNAME and REGISTRY_PASSWORD.
+name: Docker
+
+on:
+  push:
+    branches: ["feature/**"]
+    tags: ["v*"]
+
+jobs:
+  docker:
+    uses: jvincze84/reusable-workflows/.github/workflows/docker-build.yml@main
+    with:
+      image-name: pdf-manager
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
