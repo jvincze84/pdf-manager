@@ -1,0 +1,13 @@
+# Runtime data (your PDFs + database) – never commit
+data/
+
+# Generated test output
+tests/output/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local Claude Code settings
+.claude/settings.local.json

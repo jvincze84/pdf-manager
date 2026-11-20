@@ -1,0 +1,25 @@
+services:
+  pdf-manager:
+    build: .
+    image: pdf-manager:latest
+    container_name: pdf-manager
+    restart: unless-stopped
+    ports:
+      - "8888:8000"
+    environment:
+      # Name shown in the header, browser tab and installed app (PWA)
+      APP_NAME: "PDF Manager 😊"
+      # Tesseract languages used for OCR (installed: eng, hun, deu)
+      OCR_LANG: "eng+hun"
+      # Render resolution for OCR (higher = better quality, slower)
+      OCR_DPI: "300"
+      # Tesseract processes at once, shared by all documents (pages of a long
+      # document, or several short documents side by side). <= CPU cores.
+      OCR_PARALLEL: "4"
+      # Max upload size per file in MB
+      MAX_UPLOAD_MB: "500"
+    volumes:
+      # PDFs live in ./data/library, the database in ./data/db
+      - ./data:/data
+      # Alternatively mount an existing PDF collection and use "Rescan library":
+      # - /path/to/my/pdfs:/data/library
