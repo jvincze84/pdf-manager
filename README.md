@@ -2,6 +2,8 @@
 
 Small self-hosted PDF library with full-text search, tags and on-demand OCR. Runs in Docker.
 
+Screenshots avaiable in screenshots folder (github)
+
 ## Start
 
 ```bash
