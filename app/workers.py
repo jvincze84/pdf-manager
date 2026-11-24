@@ -173,7 +173,7 @@ def _tesseract(img_path: str) -> str:
     try:
         res = subprocess.run(
             ["tesseract", img_path, "stdout", "-l", OCR_LANG, "--psm", "3"],
-            capture_output=True, env=env, timeout=600,
+            capture_output=True, env=env, timeout=900,
         )
     finally:
         try:
