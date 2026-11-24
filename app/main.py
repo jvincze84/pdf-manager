@@ -168,6 +168,8 @@ def row_to_doc(r: sqlite3.Row) -> dict:
         "pages": r["pages"],
         "file_date": r["file_date"],
         "added_at": r["added_at"],
+        "doc_date": r["doc_date"] or r["file_date"] or r["added_at"],
+        "date_source": r["date_source"],
         "text_status": r["text_status"],
         "text_error": r["text_error"],
         "has_text": r["text_chars"] > 0,
@@ -204,11 +206,13 @@ def get_doc(doc_id: int) -> sqlite3.Row:
 
 # --------------------------------------------------------------------------- documents
 
+DATE_SQL = "COALESCE(d.doc_date, d.file_date, d.added_at)"
+
 SORTS = {
     "name": "d.filename COLLATE NOCASE",
     "folder": "d.folder COLLATE NOCASE",
     "size": "d.size",
-    "date": "COALESCE(d.file_date, d.added_at)",
+    "date": DATE_SQL,
     "added": "d.added_at",
     "pages": "d.pages",
 }
@@ -283,11 +287,11 @@ def list_documents(
 
     if sort in SORTS:
         direction = "ASC" if order == "asc" else "DESC"
-        order_sql = f"{SORTS[sort]} {direction}, d.id DESC"
+        order_sql = f"{SORTS[sort]} {direction}, d.id {direction}"
     elif match:
         order_sql = "rank"
     else:
-        order_sql = "COALESCE(d.file_date, d.added_at) DESC, d.id DESC"
+        order_sql = f"{DATE_SQL} DESC, d.id DESC"
 
     sql = f"""
         SELECT d.*,
@@ -443,6 +447,7 @@ class DocPatch(BaseModel):
 @app.patch("/api/documents/{doc_id}")
 def patch_document(doc_id: int, body: DocPatch):
     row = get_doc(doc_id)
+    renamed = False
     with db.transaction() as conn:
         if body.tags is not None:
             set_tags(conn, doc_id, body.tags)
@@ -459,6 +464,12 @@ def patch_document(doc_id: int, body: DocPatch):
                 conn.execute("UPDATE documents SET filename=?, folder=?, rel_path=? WHERE id=?",
                              (os.path.basename(rel), new_folder, rel, doc_id))
                 conn.execute("UPDATE doc_fts SET filename=? WHERE rowid=?", (os.path.basename(rel), doc_id))
+                if os.path.basename(rel) != row["filename"]:
+                    # the date may come from the file name -> recompute in the background
+                    conn.execute("UPDATE documents SET date_source=NULL WHERE id=?", (doc_id,))
+                    renamed = True
+    if renamed:
+        workers.wake_text()
     workers.mark_changed(doc_id)
     return get_document(doc_id)
 
@@ -764,6 +775,19 @@ def rescan():
     if added or removed:
         workers.mark_changed(reload=True)
     return {"added": added, "removed": removed}
+
+
+@app.post("/api/dates/refresh")
+def refresh_dates(folder: str | None = None):
+    """Recompute document dates (PDF metadata -> file name -> file date -> upload date) in the
+    background, e.g. after replacing files on disk or changing the rules."""
+    where, params = "1", []
+    if folder:
+        where, params = folder_clause(folder)
+    with db.transaction() as conn:
+        n = conn.execute(f"UPDATE documents SET date_source=NULL WHERE {where}", params).rowcount
+    workers.wake_text()
+    return {"queued": n}
 
 
 # --------------------------------------------------------------------------- app shell (APP_NAME)

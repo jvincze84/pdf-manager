@@ -37,3 +37,15 @@ def scan_pdf_pages(*pages: str) -> bytes:
     data = out.tobytes(deflate=True)
     out.close()
     return data
+
+
+def meta_pdf(text="meta", created="", modified="", xmp=None) -> bytes:
+    """Text PDF with exactly the given Info dates (empty = field absent) and optional XMP packet."""
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), text, fontname="helv", fontsize=12)
+    doc.set_metadata({"creationDate": created, "modDate": modified})
+    if xmp:
+        doc.set_xml_metadata(xmp)
+    data = doc.tobytes()
+    doc.close()
+    return data

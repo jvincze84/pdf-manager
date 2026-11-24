@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 import pymupdf
 
-from . import db
+from . import dates, db
 
 log = logging.getLogger("pdfmanager.workers")
 
@@ -95,12 +95,20 @@ def _open_pdf(path):
 
 # --------------------------------------------------------------------------- text extraction
 
-def _extract_one(doc_id: int, rel_path: str):
+def _set_date(conn, row, pdf):
+    doc_date, source = dates.resolve(pdf, row["filename"], row["file_date"], row["added_at"])
+    conn.execute("UPDATE documents SET doc_date=?, date_source=? WHERE id=?", (doc_date, source, row["id"]))
+
+
+def _extract_one(row):
+    doc_id, rel_path = row["id"], row["rel_path"]
     path = db.LIBRARY_DIR / rel_path
     try:
         with _open_pdf(path) as pdf:
             pages = pdf.page_count
             text = "\n".join(page.get_text("text") for page in pdf)
+            with db.transaction() as conn:
+                _set_date(conn, row, pdf)
         text = text.replace("\x00", "")
         with db.transaction() as conn:
             conn.execute(
@@ -115,6 +123,23 @@ def _extract_one(doc_id: int, rel_path: str):
                 "UPDATE documents SET text_status='error', text_error=? WHERE id=?",
                 (str(e)[:500], doc_id),
             )
+            if row["date_source"] is None:
+                _set_date(conn, row, None)
+
+
+def _date_one(row):
+    """(Re)compute the document date only (existing documents, rename, 'Refresh dates')."""
+    pdf = None
+    try:
+        pdf = _open_pdf(db.LIBRARY_DIR / row["rel_path"])
+    except Exception as e:  # noqa: BLE001
+        log.info("Date: cannot open %s (%s) - using file name / file date", row["rel_path"], e)
+    try:
+        with db.transaction() as conn:
+            _set_date(conn, row, pdf)
+    finally:
+        if pdf is not None:
+            pdf.close()
 
 
 def _text_loop():
@@ -122,14 +147,20 @@ def _text_loop():
         try:
             with db.connect() as conn:
                 row = conn.execute(
-                    "SELECT id, rel_path FROM documents WHERE text_status='pending' ORDER BY id LIMIT 1"
+                    "SELECT * FROM documents WHERE text_status='pending' ORDER BY id LIMIT 1"
                 ).fetchone()
-            if row is None:
+                date_row = None if row else conn.execute(
+                    "SELECT * FROM documents WHERE date_source IS NULL ORDER BY id LIMIT 1"
+                ).fetchone()
+            if row is not None:
+                _extract_one(row)
+                mark_changed(row["id"])
+            elif date_row is not None:
+                _date_one(date_row)
+                mark_changed(date_row["id"])
+            else:
                 _text_event.wait(30)
                 _text_event.clear()
-                continue
-            _extract_one(row["id"], row["rel_path"])
-            mark_changed(row["id"])
         except Exception:  # noqa: BLE001
             log.exception("Text worker error")
             time.sleep(5)

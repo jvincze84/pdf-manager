@@ -18,6 +18,8 @@ services:
       OCR_PARALLEL: "4"
       # Max upload size per file in MB
       MAX_UPLOAD_MB: "500"
+      # Time zone for dates without one (times in file names, some PDF dates)
+      TZ: "Europe/Budapest"
     volumes:
       # PDFs live in ./data/library, the database in ./data/db
       - ./data:/data

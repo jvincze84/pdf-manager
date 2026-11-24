@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS documents (
     size          INTEGER NOT NULL DEFAULT 0,
     sha256        TEXT,
     pages         INTEGER,
-    file_date     TEXT,
-    added_at      TEXT NOT NULL,
+    file_date     TEXT,                              -- file modification time
+    added_at      TEXT NOT NULL,                     -- upload / import time
+    doc_date      TEXT,                              -- document date (see dates.py)
+    date_source   TEXT,                              -- NULL = to be (re)computed
     text_status   TEXT NOT NULL DEFAULT 'pending',   -- pending | done | error
     text_error    TEXT,
     text_chars    INTEGER NOT NULL DEFAULT 0,
@@ -58,6 +60,11 @@ def init_db():
     for d in (LIBRARY_DIR, DB_DIR, TMP_DIR):
         d.mkdir(parents=True, exist_ok=True)
     with connect() as conn:
+        # columns added after the first release (CREATE TABLE IF NOT EXISTS won't add them)
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(documents)")}
+        for col in ("doc_date", "date_source"):
+            if cols and col not in cols:
+                conn.execute(f"ALTER TABLE documents ADD COLUMN {col} TEXT")
         conn.executescript(SCHEMA)
 
 

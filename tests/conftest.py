@@ -16,7 +16,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import db  # noqa: E402
-from conftest_helpers import scan_pdf, scan_pdf_pages, text_pdf  # noqa: E402,F401
+from conftest_helpers import meta_pdf, scan_pdf, scan_pdf_pages, text_pdf  # noqa: E402,F401
 from app.main import app  # noqa: E402
 
 

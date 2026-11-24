@@ -213,12 +213,24 @@ function snippetHtml(s) {
   return esc(s).replace(/\u0002/g, "<mark>").replace(/\u0003/g, "</mark>").replace(/\s+/g, " ");
 }
 
+const DATE_SOURCES = {
+  pdf_created: "PDF creation date",
+  pdf_modified: "PDF modification date",
+  filename: "from the file name",
+  file: "file modification time",
+  added: "upload date",
+};
+
 function rowHtml(d) {
     let sub = "";
     if (d.text_status === "pending") sub = `<div class="sub">Reading text…</div>`;
     else if (d.text_status === "error") sub = `<div class="sub warn-text" title="${esc(d.text_error)}">Could not read PDF: ${esc(d.text_error)}</div>`;
     else if (!d.has_text && d.ocr_status !== "done") sub = `<div class="sub warn-text">No text layer – run OCR to make it searchable</div>`;
-    const date = d.file_date || d.added_at;
+    const dateTitle = [
+      `Date: ${fmtDate(d.doc_date, true)} (${DATE_SOURCES[d.date_source] || "not determined yet"})`,
+      d.file_date ? `File modified: ${fmtDate(d.file_date, true)}` : "",
+      `Added: ${fmtDate(d.added_at, true)}`,
+    ].filter(Boolean).join("\n");
     return `
     <tr data-id="${d.id}" class="${state.selected.has(d.id) ? "selected" : ""}">
       <td class="col-check"><input type="checkbox" class="row-check" ${state.selected.has(d.id) ? "checked" : ""}></td>
@@ -230,7 +242,8 @@ function rowHtml(d) {
       <td><span class="folder-link" data-folder="${esc(d.folder || "/")}">${esc(d.folder ? d.folder : "/")}</span></td>
       <td class="num nowrap">${fmtSize(d.size)}</td>
       <td class="num">${d.pages ?? ""}</td>
-      <td class="nowrap" title="File date: ${esc(fmtDate(date, true))}\nAdded: ${esc(fmtDate(d.added_at, true))}">${fmtDate(date)}</td>
+      <td class="nowrap" title="${esc(dateTitle)}">${fmtDate(d.doc_date)}</td>
+      <td class="nowrap hide-narrow" title="Added: ${esc(fmtDate(d.added_at, true))}">${fmtDate(d.added_at)}</td>
       <td>${d.tags.map(t => `<span class="tag" data-tag="${esc(t)}">${esc(t)}</span>`).join("")}</td>
       <td class="ocr-cell">${ocrCell(d)}</td>
       <td class="col-actions"><div class="row-actions">
@@ -857,6 +870,14 @@ function init() {
       const r = await api("rescan", { method: "POST" });
       toast(`Rescan done: ${r.added} added, ${r.removed} removed`, "ok");
       refreshAll();
+    } catch (e) { toast(e.message, "error"); }
+  };
+  $("#refreshDatesBtn").onclick = async () => {
+    $("#moreMenu").hidden = true;
+    try {
+      const r = await api("dates/refresh", { method: "POST" });
+      toast(`Recomputing the dates of ${r.queued} documents in the background`, "ok");
+      pollStatusSoon();
     } catch (e) { toast(e.message, "error"); }
   };
 

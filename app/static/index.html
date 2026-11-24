@@ -89,6 +89,7 @@
     <div class="menu" id="moreMenu" hidden>
       <button type="button" id="dupBtn">Find duplicates</button>
       <button type="button" id="rescanBtn">Rescan library folder</button>
+      <button type="button" id="refreshDatesBtn" title="Recompute every document date from PDF metadata / file name">Refresh document dates</button>
       <button type="button" id="cancelOcrBtn">Cancel all queued OCR</button>
     </div>
   </div>
@@ -124,7 +125,8 @@
           <th class="sortable" data-sort="folder">Folder</th>
           <th class="sortable num" data-sort="size">Size</th>
           <th class="sortable num" data-sort="pages">Pages</th>
-          <th class="sortable" data-sort="date">Date</th>
+          <th class="sortable" data-sort="date" title="Document date: PDF creation date, else modification date, else a date in the file name, else the file date">Date</th>
+          <th class="sortable hide-narrow" data-sort="added" title="When the document was uploaded / imported">Added</th>
           <th>Tags</th>
           <th>OCR</th>
           <th class="col-actions"></th>
